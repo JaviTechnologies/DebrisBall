@@ -21,11 +21,12 @@ public class KatamariBall : MonoBehaviour
         if (!collision.gameObject.CompareTag("Debris"))
             return;
         
-        IDebris debris = collision.gameObject.GetComponent<IDebris>();
+        Debris debris = collision.gameObject.GetComponent<Debris>();
         if (debris.Volume < currentHalfVolume)
         {
             currentHalfVolume += (debris.Volume / 2);
             body.mass += debris.Mass;
+            Destroy(debris);
             Destroy(collision.gameObject.GetComponent<Rigidbody>());
             collision.transform.SetParent(transform);
         }
