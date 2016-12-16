@@ -14,9 +14,7 @@ namespace javitechnologies.ballwar.model
         [SerializeField]
         public string levelName;
 
-
-
         [SerializeField]
-        public List<AbstractSpawnerSetup> spawners = new List<AbstractSpawnerSetup>();
+        public List<DebrisData> objects = new List<DebrisData>();
     }
 }

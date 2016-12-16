@@ -4,7 +4,7 @@ using System.Collections;
 namespace javitechnologies.ballwar.levelgenerator.spawner
 {
     [System.Serializable]
-    public class RandomSpawnerSetup : AbstractSpawnerSetup
+    public class RandomSpawnerSetup
     {
         [SerializeField]
         public Rect range;

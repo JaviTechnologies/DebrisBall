@@ -4,7 +4,7 @@ using System.Collections;
 namespace javitechnologies.ballwar.model
 {
     [System.Serializable]
-    public struct DebrisData
+    public class DebrisData
     {
         [SerializeField]
         public string name;
@@ -13,9 +13,12 @@ namespace javitechnologies.ballwar.model
         public Vector3 position;
 
         [SerializeField]
+        public float density;
+
+        [SerializeField]
         public Vector3 scale;
 
         [SerializeField]
-        public Object prefab;
+        public Transform prefab;
     }
 }

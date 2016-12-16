@@ -6,7 +6,7 @@ using System;
 using javitechnologies.levelgenerator.data;
 using javitechnologies.ballwar.model;
 using javitechnologies.ballwar.levelgenerator.spawner;
-using javitechnologies.ballwar.levelgenerator.view;
+using javitechnologies.levelgenerator.view;
 
 namespace javitechnologies.levelgenerator.editor
 {
@@ -18,164 +18,68 @@ namespace javitechnologies.levelgenerator.editor
             EDIT_LEVEL_MODE
         }
 
-        [Serializable]
-        public struct PrefabData
-        {
-            public string name;
-            public Transform prefab;
-
-            public PrefabData(string name, Transform prefab)
-            {
-                this.name = name;
-                this.prefab = prefab;
-            }
-        }
-
         private const string dataDirectory = "Assets/Data/";
 
-        public static string DataDirectory
-        {
-            get
-            {
-                return dataDirectory;
-            }
-        }
+        public static string DataDirectory { get { return dataDirectory; } }
+
+        private static LevelGenerator levelGeneratorScriptFromScene;
 
         /**
          * The current level generator data scriptable object
          */
-        private LevelGeneratorData currentLevelGeneratorSetup;
-        private LevelData editingLevelSetup = null;
+        private static LevelGeneratorData currentLevelGeneratorSetup;
+        private static LevelData currentLevelSetup = null;
 
+        // To build the window
         private LevelEditorMode mode = LevelEditorMode.LIST_LEVEL_MODE;
+        private Vector2 spawnerListScrollPosition = Vector2.zero;
+        Color redishColor = new Color(1f, 0f, 0f, 0.3f);
+        Color tableHeaderColor = new Color(0.681f, 0.719f, 0.772f, 1.000f);
+        Color testColor = new Color(0.1f, 0.1f, 0.2f, 1f);
+        Color tableItemColor1 = new Color(219.0f/255.0f, 228.0f/255.0f, 1f, 1f);//DBE4FFFF
+        Color tableItemColor2 = new Color(0.707f, 0.734f, 0.801f, 1.000f);//DBE4FFFF
+        private static GUIStyle labelStyle;
+        private bool previousSelectedAllToggleValue = false;
 
-//        private int viewIndex = 1;
-//        public List<PrefabData> prefabs = new List<PrefabData>();
+        private string maMessage = "Please select a LevelGenerator object in the scene.";
 
         [MenuItem("Tools/Custom/Level Editor")]
         static void Init()
         {
             EditorWindow.GetWindow<LevelEditor>("Level Editor");
+
+            labelStyle = new GUIStyle(EditorStyles.boldLabel);
+            labelStyle.normal.textColor = Color.black;
+            labelStyle.fontStyle = FontStyle.Bold;
         }
 
-        void  OnEnable()
-        {
-            
-            if (EditorPrefs.HasKey("ObjectPath"))
-            {
-                string objectPath = EditorPrefs.GetString("ObjectPath");
-                currentLevelGeneratorSetup = AssetDatabase.LoadAssetAtPath(objectPath, typeof(LevelGeneratorData)) as LevelGeneratorData;
-            }
-        }
+        /*
+         * Returns the name of the selected game object in the scene.
+         * 
+         * */
+        string SelectedGameObjectName { get { return (Selection.activeGameObject != null) ? Selection.activeGameObject.name : ""; } }
 
-        void ShowLevelList()
-        {
-            if (currentLevelGeneratorSetup != null && currentLevelGeneratorSetup.levels.Count > 0)
-            {
-                int numberWidth = 50;
-                int nameWidth = 150;
-
-                List<LevelData> levels = currentLevelGeneratorSetup.levels;
-
-//                int currentHeight = levels.Count * 20;
-
-                GUILayout.Label(string.Format("{0} awesome levels in you inventory.", levels.Count));
-
-                GUILayout.BeginHorizontal("box");
-                GUILayout.Label("Id", GUILayout.Width(numberWidth));
-                GUILayout.Label("Name", GUILayout.Width(nameWidth));
-                GUILayout.Label("Spawners", GUILayout.Width(numberWidth));
-                GUILayout.Label("Options", GUILayout.Width(nameWidth));
-                GUILayout.EndHorizontal();
-
-                for (int i = 0; i < levels.Count; i++)
-                {
-                    GUILayout.BeginHorizontal("box");
-
-                    GUILayout.Label(levels[i].levelId.ToString(), GUILayout.Width(numberWidth));
-                    GUILayout.Label(levels[i].levelName, GUILayout.Width(nameWidth));
-                    GUILayout.Label(levels[i].spawners.Count.ToString(), GUILayout.Width(numberWidth));
-                    GUILayout.BeginHorizontal(GUILayout.Width(numberWidth));
-//                    GUILayout.Space(100);
-                    if (GUILayout.Button("Edit", GUILayout.ExpandWidth(false)))
-                    {
-                        editingLevelSetup = levels[i];
-                        mode = LevelEditorMode.EDIT_LEVEL_MODE;
-                    }
-                    if (GUILayout.Button("X", GUILayout.ExpandWidth(false)))
-                    {
-                        DeleteItem(i);
-                    }
-                    GUILayout.FlexibleSpace();
-                    GUILayout.EndHorizontal();
-
-                    GUILayout.EndHorizontal();
-                }
-            }
-            else
-            {
-                GUILayout.Label("No levels to show");
-            }
-        }
-
-        private Vector2 spawnerListScrollPosition = Vector2.zero;
-        private SpawnerType editingSpawnerType = SpawnerType.NONE;
-
-
-        AbstractSpawnerSetup editingSpawnerSetup = null;
-
-        Transform editingSpawnerPrefab = null;
-
-        private void AutoSave()
-        {
-            currentLevelGeneratorSetup = null;
-        }
-
-        private void NoValidSelectionDisplay()
-        {
-            GUILayout.Label("Select a LevelGeneratorGameObject", EditorStyles.boldLabel);
-            AutoSave();
-            mode = LevelEditorMode.LIST_LEVEL_MODE;
-        }
-
+        /*
+         * OnGUI()
+         * Rendering window here
+         * 
+         * */
         void  OnGUI()
         {
-            if (Selection.activeGameObject == null)
-            {
-                NoValidSelectionDisplay();
+            ExtractCurrentValues();
+
+            // Header
+            RendererHeader();
+
+            // Render Selected Object Info
+            RenderSelectedObject();
+
+            // nothing else to do if there is not game object selected
+            if (Selection.activeGameObject == null || currentLevelGeneratorSetup == null)
                 return;
-            }
-
-            LevelGenerator levelGeneratorScript = Selection.activeGameObject.GetComponent<LevelGenerator>();
-            if (levelGeneratorScript == null)
-            {
-                NoValidSelectionDisplay();
-                return;
-            }
-
-            currentLevelGeneratorSetup = levelGeneratorScript.levelGeneratorSetup;
-            if (currentLevelGeneratorSetup == null)
-            {
-                if (GUILayout.Button("Load data from scene", GUILayout.Width(200)))
-                {
-                    LoadLevelGeneratorSetupFromScene();
-                    levelGeneratorScript.levelGeneratorSetup = currentLevelGeneratorSetup;
-                }
-                mode = LevelEditorMode.LIST_LEVEL_MODE;
-                return;
-            }
-
-            if (currentLevelGeneratorSetup == null)
-            {
-                Debug.LogError("WTF!");
-                return;
-            }
-
-//            Debug.Log("LevelEditor.OnGUI");
-
+            
             EditorGUIUtility.labelWidth = 60f;
 
-//            GUILayout.Label("Level Inventory", EditorStyles.boldLabel);
             GUILayout.Space(10);
 
             switch (mode)
@@ -183,140 +87,91 @@ namespace javitechnologies.levelgenerator.editor
                 case LevelEditorMode.LIST_LEVEL_MODE:
                     ShowLevelList();
 
-                    GUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Add Level", GUILayout.Width(80)))
-                    {
-                        editingLevelSetup = null;
-                        mode = LevelEditorMode.EDIT_LEVEL_MODE;
-                        return;
-                    }
-                    GUILayout.EndHorizontal();
-
                     GUILayout.Space(10);
                     break;
+
                 case LevelEditorMode.EDIT_LEVEL_MODE:
-                    if (editingLevelSetup == null)
+                    if (currentLevelSetup == null)
                     {
                         GUILayout.Label("Creating new Level...");
-                        editingLevelSetup = LevelSetupFactory.Create();
+//                        currentLevelSetup = LevelSetupFactory.Create();
                     }
                     else
                     {
-                        GUILayout.Label(string.Format("Editing {0}", editingLevelSetup.levelName));
+                        GUILayout.Label(string.Format("Editing {0}", currentLevelSetup.levelName));
                     }
                     
                     GUILayout.Space(10);
 
                     GUILayout.BeginHorizontal();
                     GUILayout.BeginHorizontal("box");
-                    editingLevelSetup.levelId = EditorGUILayout.LongField("Id", editingLevelSetup.levelId, GUILayout.Width(250));
+                    currentLevelSetup.levelId = EditorGUILayout.LongField("Id", currentLevelSetup.levelId, GUILayout.Width(250));
                     GUILayout.EndHorizontal();
 
                     GUILayout.BeginHorizontal("box");
-                    editingLevelSetup.levelName = EditorGUILayout.TextField("Name", editingLevelSetup.levelName as string);
+                    currentLevelSetup.levelName = EditorGUILayout.TextField("Name", currentLevelSetup.levelName as string);
                     GUILayout.EndHorizontal();
                     GUILayout.EndHorizontal();
-
-//                    // test
-////                    GUILayout.Label("TEST", GUILayout.Width(100));
-////                    EditorGUI.PropertyField(new Rect(500, 500, 300, 300), editingLevelSetup.spawners, false);
-////                    GUILayout.Space(30);
-//                    // end
-
 
                     GUILayout.Space(10);
-                    GUILayout.Label("Spawners: ", GUILayout.Width(100));
-                    
-                    // show spawners
-                    spawnerListScrollPosition = GUILayout.BeginScrollView(spawnerListScrollPosition, GUIStyle.none);
-                    for (int i = 0; i < editingLevelSetup.spawners.Count; i++)
+
+                    if (currentLevelSetup.objects.Count > 0)
                     {
+                        GUILayout.Label("Debris: ", GUILayout.Width(100));
+                        Color aux = GUI.backgroundColor;
+                        GUI.backgroundColor = Color.yellow;
                         GUILayout.BeginHorizontal();
                         GUILayout.BeginHorizontal("box");
-                        GUILayout.Label(editingLevelSetup.spawners[i].type.ToString(), GUILayout.Width(70));
+                        GUILayout.Label("Name", GUILayout.Width(100));
                         GUILayout.EndHorizontal();
                         GUILayout.BeginHorizontal("box");
-                        editingLevelSetup.spawners[i].prefab = EditorGUILayout.ObjectField(editingLevelSetup.spawners[i].prefab, typeof(Transform), false, GUILayout.Width(200)) as Transform;
+                        GUILayout.Label("Position", GUILayout.Width(100));
                         GUILayout.EndHorizontal();
                         GUILayout.BeginHorizontal("box");
-                        if(GUILayout.Button("Edit", GUILayout.Width(50)))
+                        GUILayout.Label("Scale", GUILayout.Width(100));
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal("box");
+                        GUILayout.Label("Density", GUILayout.Width(60));
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal("box");
+                        GUILayout.Label("Prefab", GUILayout.Width(200));
+                        GUILayout.EndHorizontal();
+                        GUILayout.EndHorizontal();
+
+                        GUI.backgroundColor = aux;
+                        // show debris
+                        spawnerListScrollPosition = GUILayout.BeginScrollView(spawnerListScrollPosition, GUIStyle.none);
+                        for (int i = 0; i < currentLevelSetup.objects.Count; i++)
                         {
-                            editingSpawnerSetup = editingLevelSetup.spawners[i];
+                            GUILayout.BeginHorizontal();
+                            GUILayout.BeginHorizontal("box");
+                            currentLevelSetup.objects[i].name = EditorGUILayout.TextField(currentLevelSetup.objects[i].name, GUILayout.Width(100));
+//                            GUILayout.Label(editingLevelSetup.objects[i].name, GUILayout.Width(100));
+                            GUILayout.EndHorizontal();
+                            GUILayout.BeginHorizontal("box");
+                            GUILayout.Label(currentLevelSetup.objects[i].position.ToString(), GUILayout.Width(100));
+                            GUILayout.EndHorizontal();
+                            GUILayout.BeginHorizontal("box");
+                            GUILayout.Label(currentLevelSetup.objects[i].scale.ToString(), GUILayout.Width(100));
+                            GUILayout.EndHorizontal();
+                            GUILayout.BeginHorizontal("box");
+                            GUILayout.Label(currentLevelSetup.objects[i].density.ToString(), GUILayout.Width(60));
+                            GUILayout.EndHorizontal();
+                            GUILayout.BeginHorizontal("box");
+                            currentLevelSetup.objects[i].prefab = EditorGUILayout.ObjectField(currentLevelSetup.objects[i].prefab, typeof(Transform), false, GUILayout.Width(200)) as Transform;
+                            GUILayout.EndHorizontal();
+//                            GUILayout.BeginHorizontal("box");
+//                            if(GUILayout.Button("Edit", GUILayout.Width(50)))
+//                            {
+//                                editingSpawnerSetup = editingLevelSetup.objects[i];
+//                            }
+//                            GUILayout.EndHorizontal();
+                            GUILayout.EndHorizontal();
                         }
-                        GUILayout.EndHorizontal();
-                        GUILayout.EndHorizontal();
+                        GUILayout.EndScrollView();
                     }
-                    GUILayout.EndScrollView();
 
                     GUILayout.Space(10);
-
-                    GUILayout.BeginHorizontal();
-                    GUILayout.BeginHorizontal("box", GUILayout.Width(300));
-                    GUILayout.Label("Type: ", GUILayout.Width(100));
-                    editingSpawnerType = (SpawnerType)EditorGUILayout.EnumPopup(editingSpawnerType, GUILayout.Width(100));
-                    GUILayout.EndHorizontal();
-
-                    GUILayout.BeginHorizontal("box", GUILayout.Width(300));
-                    editingSpawnerPrefab = EditorGUILayout.ObjectField("Prefab", editingSpawnerPrefab, typeof(Transform), false) as Transform;
-                    GUILayout.EndHorizontal();
-                    GUILayout.EndHorizontal();
-
-                    switch (editingSpawnerType)
-                    {
-                        case SpawnerType.FIXED:
-                            FixedSpawnerSetup fixedSpawner = null;
-                            if (editingSpawnerSetup != null && editingSpawnerSetup.type == SpawnerType.FIXED)
-                            {
-                                fixedSpawner = (FixedSpawnerSetup)editingSpawnerSetup;
-                            }
-                            else
-                            {
-                                fixedSpawner = SpawnerFactory.CreateFixedSpawner();
-                            }
-
-                            GUILayout.BeginHorizontal();
-                            GUILayout.BeginHorizontal("box", GUILayout.Width(300));
-                            fixedSpawner.placementPosition = EditorGUILayout.Vector3Field("Position", fixedSpawner.placementPosition);
-                            GUILayout.EndHorizontal();
-
-                            GUILayout.BeginHorizontal("box", GUILayout.Width(300));
-                            fixedSpawner.localScale = EditorGUILayout.Vector3Field("Scale", fixedSpawner.localScale);
-                            GUILayout.EndHorizontal();
-                            GUILayout.EndHorizontal();
-                            break;
-                        case SpawnerType.RANDOM:
-                            RandomSpawnerSetup randomSpawner = null;
-                            if (editingSpawnerSetup != null && editingSpawnerSetup.type == SpawnerType.RANDOM)
-                            {
-                                randomSpawner = (RandomSpawnerSetup)editingSpawnerSetup;
-                            }
-                            else
-                            {
-                                randomSpawner = SpawnerFactory.CreateRandomSpawner();
-                            }
-
-                            GUILayout.BeginHorizontal();
-                            GUILayout.BeginHorizontal("box", GUILayout.Width(300));
-                            randomSpawner.quantity = EditorGUILayout.IntField("Quantity", randomSpawner.quantity);
-                            GUILayout.EndHorizontal();
-
-                            GUILayout.BeginHorizontal("box", GUILayout.Width(300));
-                            randomSpawner.range = (Rect)EditorGUILayout.RectField("Range", randomSpawner.range);
-                    
-                            GUILayout.EndHorizontal();
-                            GUILayout.EndHorizontal();
-
-                            break;
-                    }
-
-                    if (GUILayout.Button("Add spawner"))
-                    {
-                        
-                    }
-
-
-
-                    GUILayout.Space(20);
 
                     GUILayout.BeginHorizontal();
                     GUILayout.FlexibleSpace();
@@ -328,7 +183,13 @@ namespace javitechnologies.levelgenerator.editor
                     GUI.backgroundColor = Color.green;
                     if (GUILayout.Button("Save", GUILayout.Width(80)))
                     {
-//                        levelGeneratorSetup.levels.Add(selectedLevelSetup);
+                        if (GUI.changed)
+                        {
+                            EditorUtility.SetDirty(currentLevelSetup);
+                            EditorUtility.SetDirty(currentLevelGeneratorSetup);
+                        }
+
+                        AssetDatabase.SaveAssets();
                         mode = LevelEditorMode.LIST_LEVEL_MODE;
                     }
                     GUILayout.EndHorizontal();
@@ -437,87 +298,348 @@ namespace javitechnologies.levelgenerator.editor
 //                    GUILayout.Label("This Inventory List is Empty.");
 //                }
 //            }
-//            if (GUI.changed && levelGeneratorSetup != null)
-//            {
-//                EditorUtility.SetDirty(levelGeneratorSetup);
-//            }
         }
 
-        void LoadLevelGeneratorSetupFromScene()
+        void ExtractCurrentValues()
         {
-            Debug.Log("LoadLevelGeneratorSetupFromScene");
-            currentLevelGeneratorSetup = LevelGeneratorSetupFactory.Create();
-
-            if (currentLevelGeneratorSetup != null)
+            levelGeneratorScriptFromScene = null;
+            currentLevelGeneratorSetup = null;
+            if (Selection.activeGameObject != null)
             {
-                LevelData levelSetup = GenerateSetupFromScene();
-
-                currentLevelGeneratorSetup.levels.Add(levelSetup);
-
-                string relPath = AssetDatabase.GetAssetPath(currentLevelGeneratorSetup);
-                EditorPrefs.SetString("ObjectPath", relPath);
+                levelGeneratorScriptFromScene = Selection.activeGameObject.GetComponent<LevelGenerator>();
+                currentLevelGeneratorSetup = levelGeneratorScriptFromScene != null ? levelGeneratorScriptFromScene.levelGeneratorSetup : null;
             }
         }
 
-        LevelData GenerateSetupFromScene()
+        private void AddLevelGeneratorScriptToSelectedObject()
         {
-            LevelData levelSetup = LevelSetupFactory.Create();
-
-            Transform[] children = Selection.activeGameObject.GetComponentsInChildren<Transform>();
-//            Debug.Log("child ==> " + children.Length);
-            for (int i = 0; i < children.Length; i++)
+            if (Selection.activeGameObject != null)
             {
-                Debris debris = children[i].gameObject.GetComponent<Debris>();
-                if (debris == null)
-                    continue;
-                
-                levelSetup.spawners.Add(CreateFixedSpawner(children[i]));
+                levelGeneratorScriptFromScene = Selection.activeGameObject.AddComponent<LevelGenerator>();
             }
-
-            AssetDatabase.SaveAssets();
-
-            return levelSetup;
         }
 
-        FixedSpawnerSetup CreateFixedSpawner(Transform obj)
+        void RendererHeader()
         {
-            FixedSpawnerSetup fixedSpawner = new FixedSpawnerSetup();
-
-            fixedSpawner.type = SpawnerType.FIXED;
-            fixedSpawner.localScale = obj.localScale;
-            fixedSpawner.placementPosition = obj.position;
-            fixedSpawner.prefab = ((GameObject)PrefabUtility.GetPrefabParent(obj.gameObject)).transform;
-
-            return fixedSpawner;
-        }
-
-        void OpenItemList()
-        {
-            string absPath = EditorUtility.OpenFilePanel("Select Inventory Item List", "", "");
-            if (absPath.StartsWith(Application.dataPath))
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            GUI.enabled = levelGeneratorScriptFromScene != null;
+            if (GUILayout.Button("Load file", GUILayout.Width(80)))
             {
-                string relPath = absPath.Substring(Application.dataPath.Length - "Assets".Length);
-                currentLevelGeneratorSetup = AssetDatabase.LoadAssetAtPath(relPath, typeof(LevelGeneratorData)) as LevelGeneratorData;
-                if (currentLevelGeneratorSetup.levels == null)
-                    currentLevelGeneratorSetup.levels = new List<LevelData>();
-                if (currentLevelGeneratorSetup)
+
+            }
+            if (GUILayout.Button("Create new", GUILayout.Width(80)))
+            {
+                CreateNewLevelGeneratorSetup();
+            }
+            GUI.enabled = true;
+            EditorGUILayout.EndHorizontal();
+        }
+
+        void RenderSelectedObject()
+        {
+            // save original bg color
+            Color bgOriginalColor = GUI.backgroundColor;
+
+            // change color depending on selection
+            GUI.backgroundColor = levelGeneratorScriptFromScene != null ? tableHeaderColor : redishColor;
+
+            // begin Info Panel
+            GUILayout.BeginVertical("box");
+            // begin first line
+            GUILayout.BeginHorizontal();
+            GUILayout.BeginHorizontal(EditorStyles.helpBox);
+            EditorGUILayout.LabelField("Object:", SelectedGameObjectName);
+            GUILayout.EndHorizontal();
+            // if there is an object selected...
+            if (Selection.activeGameObject != null)
+            {
+                // if the selected object has a LevelGenerator script
+                if (levelGeneratorScriptFromScene != null)
                 {
-                    EditorPrefs.SetString("ObjectPath", relPath);
+                    // Show setup file name
+                    GUILayout.BeginHorizontal(EditorStyles.helpBox);
+                    EditorGUILayout.LabelField("File:", currentLevelGeneratorSetup!=null? currentLevelGeneratorSetup.name:"-");
+                    GUILayout.EndHorizontal();
+                }
+                else
+                {
+                    Color aux = GUI.backgroundColor;
+                    GUI.backgroundColor = bgOriginalColor;
+                    if (GUILayout.Button("Set object as Level Generator", GUILayout.Width(180)))
+                    {
+                        AddLevelGeneratorScriptToSelectedObject();
+                    }
+                    GUI.backgroundColor = aux;
                 }
             }
+            GUILayout.EndHorizontal();
+            if (levelGeneratorScriptFromScene == null)
+            {
+                ShowNotification(new GUIContent(maMessage));
+            }
+            GUILayout.EndVertical();
+            GUI.backgroundColor = bgOriginalColor;
         }
 
-        void AddItem()
+        bool selectedAllToggle;
+        bool[] selectedItems;
+        void ShowLevelList()
         {
-            LevelData newItem = LevelSetupFactory.Create();
-            newItem.levelName = "New Item";
-            currentLevelGeneratorSetup.levels.Add(newItem);
-//            viewIndex = currentLevelGeneratorSetup.levels.Count;
+            GUILayout.BeginVertical(EditorStyles.helpBox);
+
+            // Header List
+            GUILayout.BeginHorizontal();
+            int inventoryCount = 0;
+            if (currentLevelGeneratorSetup != null && currentLevelGeneratorSetup.levels != null)
+                inventoryCount = currentLevelGeneratorSetup.levels.Count;
+            GUILayout.Label(string.Format("{0} cool levels in you inventory.", inventoryCount));
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Load Level", GUILayout.Width(80)))
+            {
+                string path = EditorUtility.OpenFilePanel("Open LevelSetup File", "Assets/", "asset");
+                if (!string.IsNullOrEmpty(path))
+                {
+                    LevelData ld = AssetDatabase.LoadAssetAtPath<LevelData>(FileUtil.GetProjectRelativePath(path));
+
+                    if (ld != null)
+                    {
+                        if (currentLevelGeneratorSetup.levels.Contains(ld))
+                        {
+                            Debug.Log(string.Format("Not adding duplicated value '{0}'.", ld.levelName));
+                        }
+                        else
+                        {
+                            currentLevelGeneratorSetup.levels.Add(ld);
+                        }
+                    }
+                }
+            }
+            if (GUILayout.Button("Create Level", GUILayout.Width(80)))
+            {
+                currentLevelSetup = null;
+                mode = LevelEditorMode.EDIT_LEVEL_MODE;
+                return;
+            }
+            if (GUILayout.Button("Generate LevelSetup from Scene", GUILayout.Width(200)))
+            {
+                GenerateLevelSetupFromScene();
+                return;
+            }
+            GUILayout.EndHorizontal();
+
+            if (inventoryCount > 0)
+            {
+                int selectBoxWidth = 20;
+                int numberWidth = 50;
+                int nameWidth = 150;
+
+                List<LevelData> levels = currentLevelGeneratorSetup.levels;
+                if (selectedItems == null)
+                {
+                    selectedItems = new bool[levels.Count];
+                }
+                else if (selectedItems.Length != levels.Count)
+                {
+                    bool[] values = new bool[levels.Count];
+                    for (int i = 0; i < values.Length; i++)
+                    {
+                        values[i] = (i < selectedItems.Length) ? selectedItems[i] : false;
+                    }
+                    selectedItems = values;
+                }
+
+//                testColor = EditorGUILayout.ColorField(testColor, GUILayout.Width(100));
+//                Debug.Log("testColor:"+testColor);
+
+                Color previousColor = GUI.backgroundColor;
+                GUI.backgroundColor = tableHeaderColor;
+                GUILayout.BeginVertical("box");
+                GUILayout.BeginHorizontal();
+
+                selectedAllToggle = EditorGUILayout.Toggle(selectedAllToggle, GUILayout.Width(selectBoxWidth));
+                GUILayout.Label("ID", EditorStyles.boldLabel, GUILayout.Width(numberWidth));
+                GUILayout.Label("NAME", EditorStyles.boldLabel, GUILayout.Width(nameWidth));
+                GUILayout.Label("DEBRIS", EditorStyles.boldLabel, GUILayout.Width(numberWidth));
+
+                GUILayout.EndHorizontal();
+                GUILayout.EndVertical();
+                GUI.backgroundColor = previousColor;
+
+                // Change toggle values
+                if (selectedAllToggle != previousSelectedAllToggleValue)
+                {
+                    Debug.Log(string.Format("Going to change {0} items to {1}", selectedItems.Length, selectedAllToggle));
+                    for (int i = 0; i < selectedItems.Length; i++)
+                    {
+                        selectedItems[i] = selectedAllToggle;
+                    }
+
+                    previousSelectedAllToggleValue = selectedAllToggle;
+                }
+
+                GUILayout.BeginVertical();
+                for (int i = 0; i < levels.Count; i++)
+                {
+                    if (levels[i] == null)
+                    {
+                        Debug.LogWarning(string.Format("Level at position {0} is NULL.", i));
+                        continue;
+                    }
+                    GUI.backgroundColor = i % 2 == 0? tableItemColor1: tableItemColor2;
+                    GUILayout.BeginHorizontal(EditorStyles.helpBox);
+                    selectedItems[i] = EditorGUILayout.Toggle(selectedItems[i], GUILayout.Width(selectBoxWidth));
+                    GUILayout.Label(levels[i].levelId.ToString(), GUILayout.Width(numberWidth));
+                    GUILayout.Label(levels[i].levelName, GUILayout.Width(nameWidth));
+                    GUILayout.Label(levels[i].objects.Count.ToString(), GUILayout.Width(numberWidth));
+                    GUILayout.EndHorizontal();
+                }
+                GUILayout.EndVertical();
+                GUI.backgroundColor = previousColor;
+
+                // count selected
+                int selectedIndex = -1;
+                int selectedCount = 0;
+                for (int i = 0; i < selectedItems.Length; i++)
+                {
+                    if (selectedItems[i])
+                    {
+                        selectedIndex = i;
+                        selectedCount++;
+                    }
+                }
+
+                if (selectedCount != selectedItems.Length)
+                {
+                    selectedAllToggle = false;
+                    previousSelectedAllToggleValue = false;
+                }
+
+                // Level list bottom menu
+                GUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+                GUILayout.Label(string.Format("{0} levels selected to :", selectedCount));
+                GUI.enabled = selectedCount == 1;
+                if (GUILayout.Button("Edit", GUILayout.ExpandWidth(false)))
+                {
+                    currentLevelSetup = levels[selectedIndex];
+                    mode = LevelEditorMode.EDIT_LEVEL_MODE;
+                }
+                if (GUILayout.Button("Load", GUILayout.ExpandWidth(false)))
+                {
+
+                }
+                GUI.enabled = selectedCount > 0;
+                if (GUILayout.Button("Delete", GUILayout.ExpandWidth(false)))
+                {
+                    // TODO: confirmation window
+                    // delete all selected items
+                    for (int i = 0; i < selectedItems.Length; i++)
+                    {
+                        if (selectedItems[i])
+                            DeleteItem(i);
+                    }
+                }
+                GUI.enabled = true;
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+
+            }
+
+            GUILayout.EndVertical();
+        }
+
+        void CreateNewLevelGeneratorSetup ()
+        {
+            string path = null;
+            try
+            {
+                path = EditorUtility.SaveFilePanel(
+                    "Crate LevelGeneratorSetup",
+                    "Assets/",
+                    "NewLevelGeneratorSetup.asset",
+                    "asset");
+
+                if (string.IsNullOrEmpty(path))
+                    return;
+                
+                currentLevelGeneratorSetup = LevelGeneratorSetupFactory.Create(path);
+                levelGeneratorScriptFromScene.levelGeneratorSetup = currentLevelGeneratorSetup;
+
+                EditorUtility.SetDirty(currentLevelGeneratorSetup);
+            }
+            catch (Exception e)
+            {
+                Debug.Log("File not created. " + e.Message);
+            }
+        }
+
+        void CreateNewLevelSetup ()
+        {
+            string path = EditorUtility.SaveFilePanel(
+                "Create LevelSetup",
+                "Assets/",
+                "NewLevelSetup.asset",
+                "asset");
+
+
+            currentLevelSetup = LevelSetupFactory.Create(path);
+            currentLevelGeneratorSetup.levels.Add(currentLevelSetup);
+
+            EditorUtility.SetDirty(currentLevelGeneratorSetup);
+        }
+
+        void GenerateLevelSetupFromScene()
+        {
+            if (currentLevelGeneratorSetup == null)
+            {
+                CreateNewLevelGeneratorSetup();
+            }
+
+            if (levelGeneratorScriptFromScene != null)
+            {
+                CreateNewLevelSetup ();
+
+                Transform[] children = levelGeneratorScriptFromScene.gameObject.GetComponentsInChildren<Transform>();
+//                Debug.Log("child ==> " + children.Length);
+
+                for (int i = 0; i < children.Length; i++)
+                {
+                    Debris debris = children[i].gameObject.GetComponent<Debris>();
+                    if (debris == null)
+                        continue;
+
+                    currentLevelSetup.objects.Add(CreateDebrisData(debris));
+                }
+
+                if (GUI.changed)
+                {
+                    EditorUtility.SetDirty(currentLevelSetup);
+                }
+
+//                AssetDatabase.SaveAssets();
+            }
+        }
+
+        DebrisData CreateDebrisData(Debris debris)
+        {
+            DebrisData debrisData = new DebrisData();
+
+            debrisData.name = debris.transform.name;
+            debrisData.position = debris.transform.position;
+            debrisData.prefab = ((GameObject)PrefabUtility.GetPrefabParent(debris.gameObject)).transform;
+            debrisData.scale = debris.transform.localScale;
+            debrisData.density = debris.Density;
+
+            return debrisData;
         }
 
         void DeleteItem(int index)
         {
             currentLevelGeneratorSetup.levels.RemoveAt(index);
+            EditorUtility.SetDirty(currentLevelGeneratorSetup);
+
+            AssetDatabase.SaveAssets();
         }
     }
 }

@@ -20,6 +20,11 @@ public abstract class Debris: MonoBehaviour, IDebris
         get { return mass; }
     }
 
+    public float Density
+    {
+        get { return density; } set { density = value; }
+    }
+
     void Start()
     {
         volume = calculateVolume();

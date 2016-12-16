@@ -7,28 +7,13 @@ namespace javitechnologies.levelgenerator.editor
 {
     public class LevelSetupFactory
     {
-        public static LevelData Create()
+        public static LevelData Create(string path)
         {
             LevelData asset = ScriptableObject.CreateInstance<LevelData>();
 
-            string name = "NewLevelSetupData";
+            AssetDatabase.CreateAsset(asset, FileUtil.GetProjectRelativePath(path));
+            asset.levelName = asset.name;
 
-            string assetPath = string.Format("{0}{1}.asset", LevelEditor.DataDirectory, name);
-
-            // Get a name that doesn't exists
-            string[] assetsFound = AssetDatabase.FindAssets(assetPath);
-            int i = 1;
-            while (assetsFound != null && assetsFound.Length > 0)
-            {
-                name = string.Format("NewLevelSetupData_copy_{0}.asset", i++);
-                assetPath = string.Format("{0}{1}.asset", LevelEditor.DataDirectory, name);
-                assetsFound = AssetDatabase.FindAssets(assetPath);
-                return null;
-            }
-
-            asset.levelName = name;
-
-            AssetDatabase.CreateAsset(asset, assetPath);
             AssetDatabase.SaveAssets();
 
             return asset;
