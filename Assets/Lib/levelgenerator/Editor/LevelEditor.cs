@@ -24,22 +24,28 @@ namespace javitechnologies.levelgenerator.editor
 
         private static LevelGenerator levelGeneratorScriptFromScene;
 
-        /**
+        /*
          * The current level generator data scriptable object
          */
         private static LevelGeneratorData currentLevelGeneratorSetup;
-        private static LevelData currentLevelSetup = null;
+
+        private static LevelData actualLevelData = null;
+
+
+        private static LevelEditPhase levelEditPhase;
 
         // To build the window
         private LevelEditorMode mode = LevelEditorMode.LIST_LEVEL_MODE;
         private Vector2 spawnerListScrollPosition = Vector2.zero;
         Color redishColor = new Color(1f, 0f, 0f, 0.3f);
         Color tableHeaderColor = new Color(0.681f, 0.719f, 0.772f, 1.000f);
-        Color testColor = new Color(0.1f, 0.1f, 0.2f, 1f);
+//        Color testColor = new Color(0.1f, 0.1f, 0.2f, 1f);
         Color tableItemColor1 = new Color(219.0f/255.0f, 228.0f/255.0f, 1f, 1f);//DBE4FFFF
         Color tableItemColor2 = new Color(0.707f, 0.734f, 0.801f, 1.000f);//DBE4FFFF
         private static GUIStyle labelStyle;
         private bool previousSelectedAllToggleValue = false;
+//        private bool creatingNewLevel;
+
 
         private string maMessage = "Please select a LevelGenerator object in the scene.";
 
@@ -51,6 +57,8 @@ namespace javitechnologies.levelgenerator.editor
             labelStyle = new GUIStyle(EditorStyles.boldLabel);
             labelStyle.normal.textColor = Color.black;
             labelStyle.fontStyle = FontStyle.Bold;
+
+            levelEditPhase = new LevelEditPhase();
         }
 
         /*
@@ -68,132 +76,30 @@ namespace javitechnologies.levelgenerator.editor
         {
             ExtractCurrentValues();
 
-            // Header
-            RendererHeader();
-
-            // Render Selected Object Info
-            RenderSelectedObject();
-
-            // nothing else to do if there is not game object selected
-            if (Selection.activeGameObject == null || currentLevelGeneratorSetup == null)
-                return;
-            
-            EditorGUIUtility.labelWidth = 60f;
-
-            GUILayout.Space(10);
-
             switch (mode)
             {
                 case LevelEditorMode.LIST_LEVEL_MODE:
+                    // Header
+                    RendererHeader();
+
+                    // Render Selected Object Info
+                    RenderSelectedObject();
+
+                    // nothing else to do if there is not game object selected
+                    if (Selection.activeGameObject == null || currentLevelGeneratorSetup == null)
+                        return;
+
+                    EditorGUIUtility.labelWidth = 60f;
+
+                    GUILayout.Space(10);
+
                     ShowLevelList();
 
                     GUILayout.Space(10);
                     break;
 
                 case LevelEditorMode.EDIT_LEVEL_MODE:
-                    if (currentLevelSetup == null)
-                    {
-                        GUILayout.Label("Creating new Level...");
-//                        currentLevelSetup = LevelSetupFactory.Create();
-                    }
-                    else
-                    {
-                        GUILayout.Label(string.Format("Editing {0}", currentLevelSetup.levelName));
-                    }
-                    
-                    GUILayout.Space(10);
-
-                    GUILayout.BeginHorizontal();
-                    GUILayout.BeginHorizontal("box");
-                    currentLevelSetup.levelId = EditorGUILayout.LongField("Id", currentLevelSetup.levelId, GUILayout.Width(250));
-                    GUILayout.EndHorizontal();
-
-                    GUILayout.BeginHorizontal("box");
-                    currentLevelSetup.levelName = EditorGUILayout.TextField("Name", currentLevelSetup.levelName as string);
-                    GUILayout.EndHorizontal();
-                    GUILayout.EndHorizontal();
-
-                    GUILayout.Space(10);
-
-                    if (currentLevelSetup.objects.Count > 0)
-                    {
-                        GUILayout.Label("Debris: ", GUILayout.Width(100));
-                        Color aux = GUI.backgroundColor;
-                        GUI.backgroundColor = Color.yellow;
-                        GUILayout.BeginHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        GUILayout.Label("Name", GUILayout.Width(100));
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        GUILayout.Label("Position", GUILayout.Width(100));
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        GUILayout.Label("Scale", GUILayout.Width(100));
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        GUILayout.Label("Density", GUILayout.Width(60));
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        GUILayout.Label("Prefab", GUILayout.Width(200));
-                        GUILayout.EndHorizontal();
-                        GUILayout.EndHorizontal();
-
-                        GUI.backgroundColor = aux;
-                        // show debris
-                        spawnerListScrollPosition = GUILayout.BeginScrollView(spawnerListScrollPosition, GUIStyle.none);
-                        for (int i = 0; i < currentLevelSetup.objects.Count; i++)
-                        {
-                            GUILayout.BeginHorizontal();
-                            GUILayout.BeginHorizontal("box");
-                            currentLevelSetup.objects[i].name = EditorGUILayout.TextField(currentLevelSetup.objects[i].name, GUILayout.Width(100));
-//                            GUILayout.Label(editingLevelSetup.objects[i].name, GUILayout.Width(100));
-                            GUILayout.EndHorizontal();
-                            GUILayout.BeginHorizontal("box");
-                            GUILayout.Label(currentLevelSetup.objects[i].position.ToString(), GUILayout.Width(100));
-                            GUILayout.EndHorizontal();
-                            GUILayout.BeginHorizontal("box");
-                            GUILayout.Label(currentLevelSetup.objects[i].scale.ToString(), GUILayout.Width(100));
-                            GUILayout.EndHorizontal();
-                            GUILayout.BeginHorizontal("box");
-                            GUILayout.Label(currentLevelSetup.objects[i].density.ToString(), GUILayout.Width(60));
-                            GUILayout.EndHorizontal();
-                            GUILayout.BeginHorizontal("box");
-                            currentLevelSetup.objects[i].prefab = EditorGUILayout.ObjectField(currentLevelSetup.objects[i].prefab, typeof(Transform), false, GUILayout.Width(200)) as Transform;
-                            GUILayout.EndHorizontal();
-//                            GUILayout.BeginHorizontal("box");
-//                            if(GUILayout.Button("Edit", GUILayout.Width(50)))
-//                            {
-//                                editingSpawnerSetup = editingLevelSetup.objects[i];
-//                            }
-//                            GUILayout.EndHorizontal();
-                            GUILayout.EndHorizontal();
-                        }
-                        GUILayout.EndScrollView();
-                    }
-
-                    GUILayout.Space(10);
-
-                    GUILayout.BeginHorizontal();
-                    GUILayout.FlexibleSpace();
-                    GUI.backgroundColor = Color.gray;
-                    if (GUILayout.Button("Cancel", GUILayout.Width(80)))
-                    {
-                        mode = LevelEditorMode.LIST_LEVEL_MODE;
-                    }
-                    GUI.backgroundColor = Color.green;
-                    if (GUILayout.Button("Save", GUILayout.Width(80)))
-                    {
-                        if (GUI.changed)
-                        {
-                            EditorUtility.SetDirty(currentLevelSetup);
-                            EditorUtility.SetDirty(currentLevelGeneratorSetup);
-                        }
-
-                        AssetDatabase.SaveAssets();
-                        mode = LevelEditorMode.LIST_LEVEL_MODE;
-                    }
-                    GUILayout.EndHorizontal();
-
+                    levelEditPhase.Render();
                     break;
             }
 
@@ -417,14 +323,15 @@ namespace javitechnologies.levelgenerator.editor
             }
             if (GUILayout.Button("Create Level", GUILayout.Width(80)))
             {
-                currentLevelSetup = null;
+//                SetEditableLevelData();
+//                creatingNewLevel = true;
+                actualLevelData = null;
+                levelEditPhase.Init(AcceptCreateOrEditLevelCallback, CancelCreateOrEditLevelCallback);
                 mode = LevelEditorMode.EDIT_LEVEL_MODE;
-                return;
             }
             if (GUILayout.Button("Generate LevelSetup from Scene", GUILayout.Width(200)))
             {
                 GenerateLevelSetupFromScene();
-                return;
             }
             GUILayout.EndHorizontal();
 
@@ -469,7 +376,6 @@ namespace javitechnologies.levelgenerator.editor
                 // Change toggle values
                 if (selectedAllToggle != previousSelectedAllToggleValue)
                 {
-                    Debug.Log(string.Format("Going to change {0} items to {1}", selectedItems.Length, selectedAllToggle));
                     for (int i = 0; i < selectedItems.Length; i++)
                     {
                         selectedItems[i] = selectedAllToggle;
@@ -522,7 +428,12 @@ namespace javitechnologies.levelgenerator.editor
                 GUI.enabled = selectedCount == 1;
                 if (GUILayout.Button("Edit", GUILayout.ExpandWidth(false)))
                 {
-                    currentLevelSetup = levels[selectedIndex];
+                    // set level data to a transient form
+                    Debug.Log(string.Format("selectedIndex={0}", selectedIndex));
+                    levelEditPhase.Init(AcceptCreateOrEditLevelCallback, CancelCreateOrEditLevelCallback, levels[selectedIndex]);
+//                    SetEditableLevelData(levels[selectedIndex]);
+//                    creatingNewLevel = false;
+                    actualLevelData = levels[selectedIndex];
                     mode = LevelEditorMode.EDIT_LEVEL_MODE;
                 }
                 if (GUILayout.Button("Load", GUILayout.ExpandWidth(false)))
@@ -533,12 +444,8 @@ namespace javitechnologies.levelgenerator.editor
                 if (GUILayout.Button("Delete", GUILayout.ExpandWidth(false)))
                 {
                     // TODO: confirmation window
-                    // delete all selected items
-                    for (int i = 0; i < selectedItems.Length; i++)
-                    {
-                        if (selectedItems[i])
-                            DeleteItem(i);
-                    }
+
+                    DeleteSelectedItems();
                 }
                 GUI.enabled = true;
                 GUILayout.FlexibleSpace();
@@ -547,6 +454,87 @@ namespace javitechnologies.levelgenerator.editor
             }
 
             GUILayout.EndVertical();
+        }
+
+        /*
+         * Handles the creation or edition of a level
+         * */
+        void AcceptCreateOrEditLevelCallback(LevelData levelData)
+        {
+            if (levelData != null)
+            {
+                if (actualLevelData != null)
+                {
+                    // copy content from levelData to editabletLevelData
+                    actualLevelData.Clone(levelData);
+
+                    // set dirty to be saved
+                    EditorUtility.SetDirty(actualLevelData);
+                }
+                else
+                {
+                    // get a new file path
+                    string path = EditorUtility.SaveFilePanel(
+                        "Create LevelSetup",
+                        "Assets/",
+                        "NewLevelSetup.asset",
+                        "asset");
+
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        // chage it to relative path
+                        path = FileUtil.GetProjectRelativePath(path);
+
+                        // look if this asset alrady exist
+                        actualLevelData = AssetDatabase.LoadAssetAtPath<LevelData>(path);
+                        if (actualLevelData != null)
+                        {
+                            actualLevelData.Clone(levelData);
+
+                            if (!currentLevelGeneratorSetup.levels.Contains(actualLevelData))
+                            {
+                                currentLevelGeneratorSetup.levels.Add(actualLevelData);
+                            }
+
+                            EditorUtility.SetDirty(actualLevelData);
+                            EditorUtility.SetDirty(currentLevelGeneratorSetup);
+                        }
+                        else
+                        {
+                            actualLevelData = levelData;
+                            AssetDatabase.CreateAsset(actualLevelData, path);
+
+                            currentLevelGeneratorSetup.levels.Add(actualLevelData);
+
+                            EditorUtility.SetDirty(actualLevelData);
+                            EditorUtility.SetDirty(currentLevelGeneratorSetup);
+                        }
+                    }
+                }
+
+                AssetDatabase.SaveAssets();
+            }
+            mode = LevelEditorMode.LIST_LEVEL_MODE;
+        }
+
+        void CancelCreateOrEditLevelCallback()
+        {
+            Debug.Log("CancelCreateOrEditLevelCallback");
+            if (actualLevelData != null)
+            {
+                Debug.Log("actualLevelData.levelName=" + actualLevelData.levelName);
+                Debug.Log("actualLevelData.levelId=" + actualLevelData.levelId);
+            }
+            mode = LevelEditorMode.LIST_LEVEL_MODE;
+        }
+
+        void CleanSelectedItemsFlag()
+        {
+            // clean selected items
+            for (int i = 0; i < selectedItems.Length; i++)
+            {
+                selectedItems[i] = false;
+            }
         }
 
         void CreateNewLevelGeneratorSetup ()
@@ -574,19 +562,21 @@ namespace javitechnologies.levelgenerator.editor
             }
         }
 
-        void CreateNewLevelSetup ()
+        LevelData CreateAndSaveNewLevelSetupFile ()
         {
+            // ask the user for the path
             string path = EditorUtility.SaveFilePanel(
                 "Create LevelSetup",
                 "Assets/",
                 "NewLevelSetup.asset",
                 "asset");
 
+            // check selected path
+            if (string.IsNullOrEmpty(path))
+                return null;
 
-            currentLevelSetup = LevelSetupFactory.Create(path);
-            currentLevelGeneratorSetup.levels.Add(currentLevelSetup);
-
-            EditorUtility.SetDirty(currentLevelGeneratorSetup);
+            // return new asset file at that path
+            return LevelSetupFactory.Create(path);
         }
 
         void GenerateLevelSetupFromScene()
@@ -598,26 +588,32 @@ namespace javitechnologies.levelgenerator.editor
 
             if (levelGeneratorScriptFromScene != null)
             {
-                CreateNewLevelSetup ();
-
-                Transform[] children = levelGeneratorScriptFromScene.gameObject.GetComponentsInChildren<Transform>();
-//                Debug.Log("child ==> " + children.Length);
-
-                for (int i = 0; i < children.Length; i++)
+                LevelData ld = CreateAndSaveNewLevelSetupFile();
+                if (ld != null)
                 {
-                    Debris debris = children[i].gameObject.GetComponent<Debris>();
-                    if (debris == null)
-                        continue;
+                    Transform[] children = levelGeneratorScriptFromScene.gameObject.GetComponentsInChildren<Transform>();
+//                    Debug.Log("child ==> " + children.Length);
 
-                    currentLevelSetup.objects.Add(CreateDebrisData(debris));
+                    if (children != null)
+                    {
+                        for (int i = 0; i < children.Length; i++)
+                        {
+                            Debris debris = children[i].gameObject.GetComponent<Debris>();
+                            if (debris == null)
+                                continue;
+
+                            ld.objects.Add(CreateDebrisData(debris));
+                        }
+                    }
+
+                    // add levelData if not in yet
+                    if (!currentLevelGeneratorSetup.levels.Contains(ld))
+                        currentLevelGeneratorSetup.levels.Add(ld);
+
+                    // everybody is dirty
+                    EditorUtility.SetDirty(ld);
+                    EditorUtility.SetDirty(currentLevelGeneratorSetup);
                 }
-
-                if (GUI.changed)
-                {
-                    EditorUtility.SetDirty(currentLevelSetup);
-                }
-
-//                AssetDatabase.SaveAssets();
             }
         }
 
@@ -634,9 +630,27 @@ namespace javitechnologies.levelgenerator.editor
             return debrisData;
         }
 
-        void DeleteItem(int index)
+        void DeleteSelectedItems()
         {
-            currentLevelGeneratorSetup.levels.RemoveAt(index);
+            Debug.Log("Items before -> " + currentLevelGeneratorSetup.levels.Count);
+
+            // create a list of all alements to delete
+            List<LevelData> levelsToDelete = new List<LevelData>();
+            for (int i = 0; i < selectedItems.Length; i++)
+            {
+                if (selectedItems[i])
+                    levelsToDelete.Add(currentLevelGeneratorSetup.levels[i]);
+            }
+
+            // delete all selected items
+            for (int i = 0; i < levelsToDelete.Count; i++)
+            {
+                currentLevelGeneratorSetup.levels.Remove(levelsToDelete[i]);
+            }
+
+            Debug.Log("Items after -> " + currentLevelGeneratorSetup.levels.Count);
+
+            CleanSelectedItemsFlag();
             EditorUtility.SetDirty(currentLevelGeneratorSetup);
 
             AssetDatabase.SaveAssets();
