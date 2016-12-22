@@ -9,17 +9,24 @@ namespace javitechnologies.levelgenerator.editor
     public class LevelEditPhase
     {
         LevelData editableLevelData;
+        private LevelData originalValue;
+
         bool creatingNewLevel;
         bool showSpawnersBoxEditMode = false;
         bool showDebrisBoxEditMode = false;
-        private Vector2 spawnerListScrollPosition = Vector2.zero;
+        private Vector2 debriListScrollPosition = Vector2.zero;
+
 
         private bool initialized = false;
 
+        /*
+         * Callbacks for user events
+         * */
+        private System.Action<LevelData,System.Action<bool>> OnSaveAction;
+        private System.Action<LevelData,System.Action<bool>> OnSaveAndExitAction;
         private System.Action OnCancelAction;
-        private System.Action<LevelData> OnSaveAction;
 
-        public void Init (System.Action<LevelData> saveActionCb, System.Action cancelActionCb, LevelData levelData = null)
+        public void Init (System.Action<LevelData,System.Action<bool>> saveActionCb, System.Action<LevelData,System.Action<bool>> saveAndExitActionCb, System.Action cancelActionCb, LevelData levelData = null)
         {
             // Set all to default values
             Reset();
@@ -31,8 +38,11 @@ namespace javitechnologies.levelgenerator.editor
             if (!creatingNewLevel)
                 editableLevelData.Clone(levelData);
 
+            originalValue.Clone(editableLevelData);
+
             // keep callbacks for this setup
             OnSaveAction = saveActionCb;
+            OnSaveAndExitAction = saveAndExitActionCb;
             OnCancelAction = cancelActionCb;
 
             // lose focus from previus values
@@ -53,6 +63,9 @@ namespace javitechnologies.levelgenerator.editor
                 // Create a ScriptableObject to transiently edit here (not stored)
                 editableLevelData = ScriptableObject.CreateInstance<LevelData>();
                 editableLevelData.objects = new List<DebrisData>();
+
+                originalValue = ScriptableObject.CreateInstance<LevelData>();
+                originalValue.objects = new List<DebrisData>();
             }
 
             // default values
@@ -90,9 +103,7 @@ namespace javitechnologies.levelgenerator.editor
             showSpawnersBoxEditMode = EditorGUILayout.Foldout(showSpawnersBoxEditMode, string.Format("Spawners: {0}", 0));
             if (showSpawnersBoxEditMode)
             {
-                GUILayout.BeginVertical(EditorStyles.helpBox);
-                GUILayout.Label("Whaaaaaaat?!: ", GUILayout.Width(100));
-                GUILayout.EndVertical();
+                DisplaySpawners();
             }
 
             GUILayout.Space(10);
@@ -100,63 +111,7 @@ namespace javitechnologies.levelgenerator.editor
             showDebrisBoxEditMode = EditorGUILayout.Foldout(showDebrisBoxEditMode, string.Format("Debris: {0}", editableLevelData.objects.Count));
             if (showDebrisBoxEditMode)
             {
-                GUILayout.BeginVertical(EditorStyles.helpBox);
-                if (editableLevelData.objects.Count > 0)
-                {
-                    Color aux = GUI.backgroundColor;
-                    GUI.backgroundColor = Color.yellow;
-                    GUILayout.BeginHorizontal();
-                    GUILayout.BeginHorizontal("box");
-                    GUILayout.Label("Name", GUILayout.Width(100));
-                    GUILayout.EndHorizontal();
-                    GUILayout.BeginHorizontal("box");
-                    GUILayout.Label("Position", GUILayout.Width(100));
-                    GUILayout.EndHorizontal();
-                    GUILayout.BeginHorizontal("box");
-                    GUILayout.Label("Scale", GUILayout.Width(100));
-                    GUILayout.EndHorizontal();
-                    GUILayout.BeginHorizontal("box");
-                    GUILayout.Label("Density", GUILayout.Width(60));
-                    GUILayout.EndHorizontal();
-                    GUILayout.BeginHorizontal("box");
-                    GUILayout.Label("Prefab", GUILayout.Width(200));
-                    GUILayout.EndHorizontal();
-                    GUILayout.EndHorizontal();
-
-                    GUI.backgroundColor = aux;
-                    // show debris
-                    spawnerListScrollPosition = GUILayout.BeginScrollView(spawnerListScrollPosition, GUIStyle.none);
-                    for (int i = 0; i < editableLevelData.objects.Count; i++)
-                    {
-                        GUILayout.BeginHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        editableLevelData.objects[i].name = EditorGUILayout.TextField(editableLevelData.objects[i].name, GUILayout.Width(100));
-                        //                            GUILayout.Label(editingLevelSetup.objects[i].name, GUILayout.Width(100));
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        GUILayout.Label(editableLevelData.objects[i].position.ToString(), GUILayout.Width(100));
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        GUILayout.Label(editableLevelData.objects[i].scale.ToString(), GUILayout.Width(100));
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        GUILayout.Label(editableLevelData.objects[i].density.ToString(), GUILayout.Width(60));
-                        GUILayout.EndHorizontal();
-                        GUILayout.BeginHorizontal("box");
-                        editableLevelData.objects[i].prefab = EditorGUILayout.ObjectField(editableLevelData.objects[i].prefab, typeof(Transform), false, GUILayout.Width(200)) as Transform;
-                        GUILayout.EndHorizontal();
-                        //                    GUILayout.BeginHorizontal("box");
-                        //                    if(GUILayout.Button("Edit", GUILayout.Width(50)))
-                        //                    {
-                        //                        editingSpawnerSetup = editingLevelSetup.objects[i];
-                        //                    }
-                        //                    GUILayout.EndHorizontal();
-                        GUILayout.EndHorizontal();
-                    }
-                    GUILayout.EndScrollView();
-                }
-
-                GUILayout.EndVertical();
+                DisplayDebris();
             }
 
             GUILayout.Space(10);
@@ -172,21 +127,28 @@ namespace javitechnologies.levelgenerator.editor
                 Reset();
             }
             GUI.backgroundColor = Color.green;
-            GUI.enabled = IsValidData();
+            GUI.enabled = IsValidData() && HasChanged;
             if (GUILayout.Button("Save", GUILayout.Width(80)))
             {
-                if (GUI.changed && editableLevelData != null)
+                if (GUI.changed && OnSaveAction != null)
                 {
-                    if (OnSaveAction != null)
-                        OnSaveAction(editableLevelData);
+                    OnSaveAction(editableLevelData, null);
                 }
-
-                Reset();
+            }
+            if (GUILayout.Button("Save And Exit", GUILayout.Width(80)))
+            {
+                if (GUI.changed && OnSaveAndExitAction != null)
+                {
+                    OnSaveAndExitAction(editableLevelData, (shouldReset) => {
+                        if (shouldReset)
+                            Reset();
+                    });
+                }
             }
             GUI.enabled = true;
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(10);
+            GUILayout.Space(20);
         }
 
         private bool IsValidData()
@@ -208,6 +170,82 @@ namespace javitechnologies.levelgenerator.editor
                 return false;
 
             return true;
+        }
+
+        private void DisplaySpawners()
+        {
+            GUILayout.BeginVertical(EditorStyles.helpBox);
+            GUILayout.Label("Whaaaaaaat?!: ", GUILayout.Width(100));
+            GUILayout.EndVertical();
+        }
+
+        private void DisplayDebris()
+        {
+            GUILayout.BeginVertical(EditorStyles.helpBox);
+            if (editableLevelData.objects.Count > 0)
+            {
+                Color aux = GUI.backgroundColor;
+                GUI.backgroundColor = Color.yellow;
+                GUILayout.BeginHorizontal();
+                GUILayout.BeginHorizontal("box");
+                GUILayout.Label("Name", GUILayout.Width(100));
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal("box");
+                GUILayout.Label("Position", GUILayout.Width(100));
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal("box");
+                GUILayout.Label("Scale", GUILayout.Width(100));
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal("box");
+                GUILayout.Label("Density", GUILayout.Width(60));
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal("box");
+                GUILayout.Label("Prefab", GUILayout.Width(200));
+                GUILayout.EndHorizontal();
+                GUILayout.EndHorizontal();
+
+                GUI.backgroundColor = aux;
+                // show debris
+                debriListScrollPosition = GUILayout.BeginScrollView(debriListScrollPosition, GUIStyle.none);
+                for (int i = 0; i < editableLevelData.objects.Count; i++)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.BeginHorizontal("box");
+                    editableLevelData.objects[i].name = EditorGUILayout.TextField(editableLevelData.objects[i].name, GUILayout.Width(100));
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal("box");
+                    GUILayout.Label(editableLevelData.objects[i].position.ToString(), GUILayout.Width(100));
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal("box");
+                    GUILayout.Label(editableLevelData.objects[i].scale.ToString(), GUILayout.Width(100));
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal("box");
+                    GUILayout.Label(editableLevelData.objects[i].density.ToString(), GUILayout.Width(60));
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal("box");
+                    editableLevelData.objects[i].prefab = EditorGUILayout.ObjectField(editableLevelData.objects[i].prefab, typeof(Transform), false, GUILayout.Width(200)) as Transform;
+                    GUILayout.EndHorizontal();
+//                    GUILayout.BeginHorizontal("box");
+//                    if(GUILayout.Button("Edit", GUILayout.Width(50)))
+//                    {
+//                        editingSpawnerSetup = editingLevelSetup.objects[i];
+//                    }
+//                    GUILayout.EndHorizontal();
+                    GUILayout.EndHorizontal();
+                }
+                GUILayout.EndScrollView();
+            }
+            GUILayout.EndVertical();
+        }
+
+        private bool HasChanged
+        {
+            get
+            {
+                bool idHasChanged = !editableLevelData.levelId.Equals(originalValue.levelId);
+                bool nameHasChanged = !editableLevelData.levelName.Equals(originalValue.levelName);
+                return idHasChanged || nameHasChanged;
+            }
         }
     }
 }

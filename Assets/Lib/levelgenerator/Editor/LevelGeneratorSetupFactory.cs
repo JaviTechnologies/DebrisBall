@@ -9,11 +9,11 @@ namespace javitechnologies.levelgenerator.editor
     public class LevelGeneratorSetupFactory
     {
         [MenuItem("Assets/Create/Level Generator Setup")]
-        public static LevelGeneratorData Create(string path)
+        public static LevelGroupData Create(string path)
         {
             try
             {
-                LevelGeneratorData asset = ScriptableObject.CreateInstance<LevelGeneratorData>();
+                LevelGroupData asset = ScriptableObject.CreateInstance<LevelGroupData>();
 
                 asset.levels = new System.Collections.Generic.List<LevelData>();
 

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 namespace javitechnologies.ballwar.model
 {
+    [System.Serializable]
     [CreateAssetMenu(fileName = "LevelSetup", menuName = "Level Generation/Level Setup", order = 1)]
     public class LevelData : ScriptableObject
     {

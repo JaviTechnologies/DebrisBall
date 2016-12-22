@@ -4,8 +4,9 @@ using javitechnologies.ballwar.model;
 
 namespace javitechnologies.levelgenerator.data
 {
-    [CreateAssetMenu(fileName = "LevelData", menuName = "Level Generation/Level Generator Setup", order = 1)]
-    public class LevelGeneratorData : ScriptableObject
+    [System.Serializable]
+    [CreateAssetMenu(fileName = "LevelGroupData", menuName = "Level Generation/Level Group Data", order = 1)]
+    public class LevelGroupData : ScriptableObject
     {
         [SerializeField]
         public List<LevelData> levels;
