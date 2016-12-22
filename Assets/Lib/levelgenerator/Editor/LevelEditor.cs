@@ -323,8 +323,6 @@ namespace javitechnologies.levelgenerator.editor
             }
             if (GUILayout.Button("Create Level", GUILayout.Width(80)))
             {
-//                SetEditableLevelData();
-//                creatingNewLevel = true;
                 actualLevelData = null;
                 levelEditPhase.Init(AcceptCreateOrEditLevelCallback, CancelCreateOrEditLevelCallback);
                 mode = LevelEditorMode.EDIT_LEVEL_MODE;
@@ -429,24 +427,24 @@ namespace javitechnologies.levelgenerator.editor
                 if (GUILayout.Button("Edit", GUILayout.ExpandWidth(false)))
                 {
                     // set level data to a transient form
-                    Debug.Log(string.Format("selectedIndex={0}", selectedIndex));
                     levelEditPhase.Init(AcceptCreateOrEditLevelCallback, CancelCreateOrEditLevelCallback, levels[selectedIndex]);
-//                    SetEditableLevelData(levels[selectedIndex]);
-//                    creatingNewLevel = false;
                     actualLevelData = levels[selectedIndex];
                     mode = LevelEditorMode.EDIT_LEVEL_MODE;
                 }
                 if (GUILayout.Button("Load", GUILayout.ExpandWidth(false)))
                 {
-
+                    // TODO: load
                 }
                 GUI.enabled = selectedCount > 0;
                 if (GUILayout.Button("Delete", GUILayout.ExpandWidth(false)))
                 {
                     // TODO: confirmation window
 
+                    // remove items
                     DeleteSelectedItems();
                 }
+
+
                 GUI.enabled = true;
                 GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
@@ -519,12 +517,6 @@ namespace javitechnologies.levelgenerator.editor
 
         void CancelCreateOrEditLevelCallback()
         {
-            Debug.Log("CancelCreateOrEditLevelCallback");
-            if (actualLevelData != null)
-            {
-                Debug.Log("actualLevelData.levelName=" + actualLevelData.levelName);
-                Debug.Log("actualLevelData.levelId=" + actualLevelData.levelId);
-            }
             mode = LevelEditorMode.LIST_LEVEL_MODE;
         }
 
@@ -632,8 +624,6 @@ namespace javitechnologies.levelgenerator.editor
 
         void DeleteSelectedItems()
         {
-            Debug.Log("Items before -> " + currentLevelGeneratorSetup.levels.Count);
-
             // create a list of all alements to delete
             List<LevelData> levelsToDelete = new List<LevelData>();
             for (int i = 0; i < selectedItems.Length; i++)
@@ -647,8 +637,6 @@ namespace javitechnologies.levelgenerator.editor
             {
                 currentLevelGeneratorSetup.levels.Remove(levelsToDelete[i]);
             }
-
-            Debug.Log("Items after -> " + currentLevelGeneratorSetup.levels.Count);
 
             CleanSelectedItemsFlag();
             EditorUtility.SetDirty(currentLevelGeneratorSetup);

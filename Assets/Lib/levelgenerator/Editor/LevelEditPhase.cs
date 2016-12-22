@@ -11,6 +11,7 @@ namespace javitechnologies.levelgenerator.editor
         LevelData editableLevelData;
         bool creatingNewLevel;
         bool showSpawnersBoxEditMode = false;
+        bool showDebrisBoxEditMode = false;
         private Vector2 spawnerListScrollPosition = Vector2.zero;
 
         private bool initialized = false;
@@ -86,7 +87,7 @@ namespace javitechnologies.levelgenerator.editor
             GUILayout.EndHorizontal();
             GUILayout.EndHorizontal();
 
-            showSpawnersBoxEditMode = EditorGUILayout.Foldout(showSpawnersBoxEditMode, "Spawners");
+            showSpawnersBoxEditMode = EditorGUILayout.Foldout(showSpawnersBoxEditMode, string.Format("Spawners: {0}", 0));
             if (showSpawnersBoxEditMode)
             {
                 GUILayout.BeginVertical(EditorStyles.helpBox);
@@ -96,60 +97,66 @@ namespace javitechnologies.levelgenerator.editor
 
             GUILayout.Space(10);
 
-            if (editableLevelData.objects.Count > 0)
+            showDebrisBoxEditMode = EditorGUILayout.Foldout(showDebrisBoxEditMode, string.Format("Debris: {0}", editableLevelData.objects.Count));
+            if (showDebrisBoxEditMode)
             {
-                GUILayout.Label("Debris: ", GUILayout.Width(100));
-                Color aux = GUI.backgroundColor;
-                GUI.backgroundColor = Color.yellow;
-                GUILayout.BeginHorizontal();
-                GUILayout.BeginHorizontal("box");
-                GUILayout.Label("Name", GUILayout.Width(100));
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal("box");
-                GUILayout.Label("Position", GUILayout.Width(100));
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal("box");
-                GUILayout.Label("Scale", GUILayout.Width(100));
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal("box");
-                GUILayout.Label("Density", GUILayout.Width(60));
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal("box");
-                GUILayout.Label("Prefab", GUILayout.Width(200));
-                GUILayout.EndHorizontal();
-                GUILayout.EndHorizontal();
-
-                GUI.backgroundColor = aux;
-                // show debris
-                spawnerListScrollPosition = GUILayout.BeginScrollView(spawnerListScrollPosition, GUIStyle.none);
-                for (int i = 0; i < editableLevelData.objects.Count; i++)
+                GUILayout.BeginVertical(EditorStyles.helpBox);
+                if (editableLevelData.objects.Count > 0)
                 {
+                    Color aux = GUI.backgroundColor;
+                    GUI.backgroundColor = Color.yellow;
                     GUILayout.BeginHorizontal();
                     GUILayout.BeginHorizontal("box");
-                    editableLevelData.objects[i].name = EditorGUILayout.TextField(editableLevelData.objects[i].name, GUILayout.Width(100));
-                    //                            GUILayout.Label(editingLevelSetup.objects[i].name, GUILayout.Width(100));
+                    GUILayout.Label("Name", GUILayout.Width(100));
                     GUILayout.EndHorizontal();
                     GUILayout.BeginHorizontal("box");
-                    GUILayout.Label(editableLevelData.objects[i].position.ToString(), GUILayout.Width(100));
+                    GUILayout.Label("Position", GUILayout.Width(100));
                     GUILayout.EndHorizontal();
                     GUILayout.BeginHorizontal("box");
-                    GUILayout.Label(editableLevelData.objects[i].scale.ToString(), GUILayout.Width(100));
+                    GUILayout.Label("Scale", GUILayout.Width(100));
                     GUILayout.EndHorizontal();
                     GUILayout.BeginHorizontal("box");
-                    GUILayout.Label(editableLevelData.objects[i].density.ToString(), GUILayout.Width(60));
+                    GUILayout.Label("Density", GUILayout.Width(60));
                     GUILayout.EndHorizontal();
                     GUILayout.BeginHorizontal("box");
-                    editableLevelData.objects[i].prefab = EditorGUILayout.ObjectField(editableLevelData.objects[i].prefab, typeof(Transform), false, GUILayout.Width(200)) as Transform;
+                    GUILayout.Label("Prefab", GUILayout.Width(200));
                     GUILayout.EndHorizontal();
-//                    GUILayout.BeginHorizontal("box");
-//                    if(GUILayout.Button("Edit", GUILayout.Width(50)))
-//                    {
-//                        editingSpawnerSetup = editingLevelSetup.objects[i];
-//                    }
-//                    GUILayout.EndHorizontal();
                     GUILayout.EndHorizontal();
+
+                    GUI.backgroundColor = aux;
+                    // show debris
+                    spawnerListScrollPosition = GUILayout.BeginScrollView(spawnerListScrollPosition, GUIStyle.none);
+                    for (int i = 0; i < editableLevelData.objects.Count; i++)
+                    {
+                        GUILayout.BeginHorizontal();
+                        GUILayout.BeginHorizontal("box");
+                        editableLevelData.objects[i].name = EditorGUILayout.TextField(editableLevelData.objects[i].name, GUILayout.Width(100));
+                        //                            GUILayout.Label(editingLevelSetup.objects[i].name, GUILayout.Width(100));
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal("box");
+                        GUILayout.Label(editableLevelData.objects[i].position.ToString(), GUILayout.Width(100));
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal("box");
+                        GUILayout.Label(editableLevelData.objects[i].scale.ToString(), GUILayout.Width(100));
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal("box");
+                        GUILayout.Label(editableLevelData.objects[i].density.ToString(), GUILayout.Width(60));
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal("box");
+                        editableLevelData.objects[i].prefab = EditorGUILayout.ObjectField(editableLevelData.objects[i].prefab, typeof(Transform), false, GUILayout.Width(200)) as Transform;
+                        GUILayout.EndHorizontal();
+                        //                    GUILayout.BeginHorizontal("box");
+                        //                    if(GUILayout.Button("Edit", GUILayout.Width(50)))
+                        //                    {
+                        //                        editingSpawnerSetup = editingLevelSetup.objects[i];
+                        //                    }
+                        //                    GUILayout.EndHorizontal();
+                        GUILayout.EndHorizontal();
+                    }
+                    GUILayout.EndScrollView();
                 }
-                GUILayout.EndScrollView();
+
+                GUILayout.EndVertical();
             }
 
             GUILayout.Space(10);
@@ -165,6 +172,7 @@ namespace javitechnologies.levelgenerator.editor
                 Reset();
             }
             GUI.backgroundColor = Color.green;
+            GUI.enabled = IsValidData();
             if (GUILayout.Button("Save", GUILayout.Width(80)))
             {
                 if (GUI.changed && editableLevelData != null)
@@ -175,7 +183,31 @@ namespace javitechnologies.levelgenerator.editor
 
                 Reset();
             }
+            GUI.enabled = true;
             GUILayout.EndHorizontal();
+
+            GUILayout.Space(10);
+        }
+
+        private bool IsValidData()
+        {
+            // validate object
+            if (editableLevelData == null)
+                return false;
+
+            // check level id
+            if (editableLevelData.levelId < 1)
+                return false;
+
+            // check name
+            if (string.IsNullOrEmpty(editableLevelData.levelName))
+                return false;
+
+            // check objects
+            if (editableLevelData.objects == null)
+                return false;
+
+            return true;
         }
     }
 }
